@@ -13,6 +13,10 @@ import (
 	"time"
 
 	"golang.org/x/net/websocket"
+
+	"github.com/heeeeeng/naivechain/core"
+	"github.com/heeeeeng/naivechain/p2p"
+	"github.com/heeeeeng/naivechain/rpc"
 )
 
 const (
@@ -295,4 +299,14 @@ func main() {
 	http.Handle("/", websocket.Handler(wsHandleP2P))
 	log.Println("Listen P2P on ", *p2pAddr)
 	errFatal("start p2p server", http.ListenAndServe(*p2pAddr, nil))
+
+	// ------------------
+
+	bc := &core.BlockChain{}
+
+	p2pServer := p2p.NewP2PServer(bc)
+	rpcServer := rpc.NewRpcServer(bc)
+
+	bc.Init(p2pServer, rpcServer)
+	bc.Start()
 }
