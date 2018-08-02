@@ -304,7 +304,7 @@ func main() {
 
 	bc := &core.BlockChain{}
 
-	p2pServer := p2p.NewP2PServer(bc)
+	p2pServer := p2p.NewP2PServer(*p2pAddr, bc)
 	rpcServer := rpc.NewRpcServer(bc)
 
 	bc.Init(p2pServer, rpcServer)

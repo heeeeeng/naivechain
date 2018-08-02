@@ -3,10 +3,12 @@ package p2p
 import (
 	"io"
 	"log"
+	"net/http"
 	"encoding/json"
 	"golang.org/x/net/websocket"
 
 	"github.com/heeeeeng/naivechain/core"
+	"github.com/heeeeeng/naivechain/core/types"
 )
 
 const (
@@ -17,42 +19,64 @@ const (
 )
 
 type P2PServer struct {
-	conns		[]*websocket.Conn
+	port		string
+
+	peers		[]*Peer
 	blockchain	*core.BlockChain
 }
 
-func NewP2PServer(bc *core.BlockChain) *P2PServer {
+func NewP2PServer(port string, bc *core.BlockChain) *P2PServer {
 	srv := &P2PServer{
-		conns:		[]*websocket.Conn{},
+		port:		port,
+		peers:		[]*Peer{},
 		blockchain: bc,
 	}
 	return srv
 }
 
 func (srv *P2PServer) Start() {
-	for _, conn := range srv.conns {
-		go srv.readloop(conn)
+	for _, peer := range srv.peers {
+		go srv.readloop(peer.conn)
+	}
+
+	http.Handle("/", websocket.Handler(srv.readloop))
+	log.Println("Listen P2P on ", srv.port)
+	go errFatal("start p2p server", http.ListenAndServe(srv.port, nil))
+}
+
+func (srv *P2PServer) Close() {
+	for _, peer := range srv.peers {
+		peer.Close()
 	}
 }
 
-func (srv *P2PServer) AddPeers(peers []string) {
-	for _, peer := range peers {
-		if peer == "" {
+func (srv *P2PServer) AddPeers(peerAddrs []string) {
+	for _, peerAddr := range peerAddrs {
+		if peerAddr == "" {
 			continue
 		}
-		ws, err := websocket.Dial(peer, "", peer)
+		peer, err := NewPeer(peerAddr)
 		if err != nil {
-			log.Println("dial to peer", err)
 			continue
 		}
-		srv.conns = append(srv.conns, ws)
-		go srv.readloop(ws)
+		srv.peers = append(srv.peers, peer)
+		go srv.readloop(peer.conn)
+	}
+}
+
+func (srv *P2PServer) RemovePeer(peerAddr string) {
+	for i, p := range srv.peers {
+		if p.PeerAddr == peerAddr {
+			p.Close()
+			srv.peers = append(srv.peers[0:i], srv.peers[i+1:]...)
+			return
+		}
 	}
 }
 
 type ResponseBlockchain struct {
 	Type int    `json:"type"`
-	Data string `json:"data"`
+	Data []byte `json:"data"`
 }
 
 type QueryBlockMsg struct {
@@ -83,8 +107,6 @@ func (srv *P2PServer) readloop(ws *websocket.Conn) {
 
 		switch v.Type {
 		case queryBlock:
-			v.Type = respQueryBlock
-
 			var queryData QueryBlockMsg
 			err = json.Unmarshal([]byte(v.Data), &queryData)
 			if err != nil {
@@ -94,31 +116,39 @@ func (srv *P2PServer) readloop(ws *websocket.Conn) {
 			block := srv.blockchain.GetBlock(queryData.Index)
 			if block == nil {
 				log.Println("GetBlock with wrong index")
-				bs := []byte("wrong index")
-				ws.Write(bs)
 				continue
 			}
-			bs := block.Bytes()
+			v.Type = respQueryBlock
+			v.Data = block.Bytes()
+			bs, _ := json.Marshal(v)
 			log.Printf("responseLatestMsg: %s\n", bs)
 			ws.Write(bs)
 
 		case queryAll:
 			// TODO query all
 			v.Type = respQueryChain
-			v.Data = srv.blockchain.String()
+			v.Data = srv.blockchain.Bytes()
 			bs, _ := json.Marshal(v)
 			log.Printf("responseChainMsg: %s\n", bs)
 			ws.Write(bs)
 
 		case respQueryBlock:
 			// handleBlockchainResponse([]byte(v.Data))
+			var block types.Block
+			err = json.Unmarshal(v.Data, &block)
+			if err != nil {
+				log.Println("Can't unmarshal msg.Data to Block")
+				continue
+			}
+			srv.blockchain.TryAppendBlock(&block)
 
 		case respQueryChain:
-
+			// TODO
 		}
 
 	}
 }
+
 
 // ----------
 
