@@ -3,20 +3,15 @@ package rpc
 import (
 	"log"
 	"net/http"
-
-	"github.com/heeeeeng/naivechain/core"
 )
 
 type RpcServer struct {
 	rpcport		string
-
-	blockchain *core.BlockChain
 }
 
-func NewRpcServer(rpcport string, bc *core.BlockChain) *RpcServer {
+func NewRpcServer(rpcport string) *RpcServer {
 	srv := &RpcServer{
 		rpcport:	rpcport,
-		blockchain: bc,
 	}
 	return srv
 }

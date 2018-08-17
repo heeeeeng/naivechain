@@ -6,9 +6,6 @@ import (
 	"net/http"
 	"encoding/json"
 	"golang.org/x/net/websocket"
-
-	"github.com/heeeeeng/naivechain/core"
-	"github.com/heeeeeng/naivechain/core/types"
 )
 
 const (
@@ -22,14 +19,12 @@ type P2PServer struct {
 	port		string
 
 	peers		[]*Peer
-	blockchain	*core.BlockChain
 }
 
-func NewP2PServer(port string, bc *core.BlockChain) *P2PServer {
+func NewP2PServer(port string) *P2PServer {
 	srv := &P2PServer{
 		port:		port,
 		peers:		[]*Peer{},
-		blockchain: bc,
 	}
 	return srv
 }
@@ -106,44 +101,44 @@ func (srv *P2PServer) readloop(ws *websocket.Conn) {
 		errFatal("invalid p2p msg", err)
 
 		switch v.Type {
-		case queryBlock:
-			var queryData QueryBlockMsg
-			err = json.Unmarshal([]byte(v.Data), &queryData)
-			if err != nil {
-				log.Println("Can't unmarshal QueryBlockMsg from ", peer, err.Error())
-				continue
-			}
-			block := srv.blockchain.GetBlock(queryData.Index)
-			if block == nil {
-				log.Println("GetBlock with wrong index")
-				continue
-			}
-			v.Type = respQueryBlock
-			v.Data = block.Bytes()
-			bs, _ := json.Marshal(v)
-			log.Printf("responseLatestMsg: %s\n", bs)
-			ws.Write(bs)
+		// case queryBlock:
+		// 	var queryData QueryBlockMsg
+		// 	err = json.Unmarshal([]byte(v.Data), &queryData)
+		// 	if err != nil {
+		// 		log.Println("Can't unmarshal QueryBlockMsg from ", peer, err.Error())
+		// 		continue
+		// 	}
+		// 	block := srv.blockchain.GetBlock(queryData.Index)
+		// 	if block == nil {
+		// 		log.Println("GetBlock with wrong index")
+		// 		continue
+		// 	}
+		// 	v.Type = respQueryBlock
+		// 	v.Data = block.Bytes()
+		// 	bs, _ := json.Marshal(v)
+		// 	log.Printf("responseLatestMsg: %s\n", bs)
+		// 	ws.Write(bs)
 
-		case queryAll:
-			// TODO query all
-			v.Type = respQueryChain
-			v.Data = srv.blockchain.Bytes()
-			bs, _ := json.Marshal(v)
-			log.Printf("responseChainMsg: %s\n", bs)
-			ws.Write(bs)
+		// case queryAll:
+		// 	// TODO query all
+		// 	v.Type = respQueryChain
+		// 	v.Data = srv.blockchain.Bytes()
+		// 	bs, _ := json.Marshal(v)
+		// 	log.Printf("responseChainMsg: %s\n", bs)
+		// 	ws.Write(bs)
 
-		case respQueryBlock:
-			// handleBlockchainResponse([]byte(v.Data))
-			var block types.Block
-			err = json.Unmarshal(v.Data, &block)
-			if err != nil {
-				log.Println("Can't unmarshal msg.Data to Block")
-				continue
-			}
-			srv.blockchain.TryAppendBlock(&block)
+		// case respQueryBlock:
+		// 	// handleBlockchainResponse([]byte(v.Data))
+		// 	var block types.Block
+		// 	err = json.Unmarshal(v.Data, &block)
+		// 	if err != nil {
+		// 		log.Println("Can't unmarshal msg.Data to Block")
+		// 		continue
+		// 	}
+		// 	srv.blockchain.TryAppendBlock(&block)
 
-		case respQueryChain:
-			// TODO
+		// case respQueryChain:
+		// 	// TODO
 		}
 
 	}
