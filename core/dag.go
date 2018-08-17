@@ -2,17 +2,17 @@ package core
 
 import (
 	"github.com/heeeeeng/naivechain/ogdb"
-	"github.com/heeeeeng/naivechain/core/types"
+	// "github.com/heeeeeng/naivechain/core/types"
 )
 
 type Dag struct {
 
 	db ogdb.Database
 
-	genesisBlock *types.Block
-	latestBlock  *types.Block
+	// genesisBlock *types.Block
+	// latestBlock  *types.Block
 
-	chain	[]*types.Block
+	// chain	[]*types.Block
 
 }
 
@@ -47,9 +47,9 @@ func (dag *Dag) Bytes() []byte {
 }
 func (dag *Dag) String() string {
 	result := ""
-	for _, block := range dag.chain{
-		result += block.String()
-	}
+	// for _, block := range dag.chain{
+	// 	result += block.String()
+	// }
 	return result
 }
 // func (dag *Dag) Len() int { return int(dag.latestBlock.Index) }
